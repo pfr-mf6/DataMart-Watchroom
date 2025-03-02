@@ -21,26 +21,36 @@ let
         {"Incident_ID"}
     ),
 
-    // Ensure we append 'FIS' to the Incident_ID_Internal
+    // Rename to match ITE conventions
     RenamedColumns = Table.RenameColumns(
         SelectColumns,
         {{"Incident_ID", "Incident_ID_Internal"}}
     ),
 
+    // Add 6969 to avoid "collisions" and to ensure each dataset has unique IDs
+    // NOTE: very important to ensure Int64 typecast
     AddPrefix = Table.TransformColumns(
         RenamedColumns,
-        {{"Incident_ID_Internal", each 6969000000 + _, type number}}
+        {{"Incident_ID_Internal", each Number.FromText(Text.From(6969000000 + _)), Int64.Type}}
     ),
 
-    // Mark these entries with 
+    // Add the DataSource column
     AddDataSource = Table.AddColumn(
         AddPrefix, 
         "DataSource", 
         each "FIS", 
         type text
+    ),
+
+    AddShortname = Table.AddColumn(
+        AddDataSource, 
+        "Agency_Shortname", 
+        each "FIS", 
+        type text
     )
+
 in
-    AddDataSource
+    AddShortname
 
 ```
 
@@ -51,29 +61,37 @@ in
 
 let
     Source = Incident,
-
     SelectColumns = Table.SelectColumns(
         Source,
         {"Incident_ID", "IncDate"}
     ),
 
+    // Rename to match ITE conventions
     RenamedColumns = Table.RenameColumns(
         SelectColumns,
         {
             {"Incident_ID", "Incident_ID_Internal"},
-            {"IncDate", "AlarmDateTime"}
+            {"IncDate", "Basic_Incident_Alarm_Time"}
         }
     ),
 
-    // NOTE: We cannot append a string... this will cause an error
-    // We instead append '6969' to the Incident_ID_Internal
+    // Add 6969 to avoid "collisions" and to ensure each dataset has unique IDs
+    // NOTE: very important to ensure Int64 typecast
     AddPrefix = Table.TransformColumns(
         RenamedColumns,
-        {{"Incident_ID_Internal", each 6969000000 + _, type number}}
+        {{"Incident_ID_Internal", each Number.FromText(Text.From(6969000000 + _)), Int64.Type}}
+    ),
+
+    // Add dummy data
+    AddIncidentNumber = Table.AddColumn(
+        AddPrefix, 
+        "Basic_Incident_Number", 
+        each "RP__-______",
+        type text
     )
 
 in
-    AddPrefix
+    AddIncidentNumber
 
 ```
 
@@ -93,6 +111,7 @@ let
         }
     ),
 
+    // Rename to match ITE conventions
     RenamedColumns = Table.RenameColumns(
         SelectColumns,
         {
@@ -101,12 +120,14 @@ let
         }
     ),
 
+    // Add 6969 to avoid "collisions" and to ensure each dataset has unique IDs
+    // NOTE: very important to ensure Int64 typecast
     AddPrefix = Table.TransformColumns(
         RenamedColumns,
-        {{"Incident_ID_Internal", each 6969000000 + _, type number}}
-    )
+        {{"Incident_ID_Internal", each Number.FromText(Text.From(6969000000 + _)), Int64.Type}}
+    ),
 
-    // Merge with ResponderUnit table
+    // Use ResponderUnit_ID lookup table to get unit names
     MergedWithResponder = Table.NestedJoin(
         AddPrefix,
         {"Responder_ID"},
